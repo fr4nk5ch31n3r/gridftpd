@@ -7,13 +7,17 @@ Get your Globus GridFTP server up and running in less than a minute.
 ## Prerequisites ##
 
 * Globus GridFTP server binaries installed
-* host certficate and key (two copies, one for the frontend and one for the backend(s))
+* Shipped Globus GridFTP server init scripts disabled
+(`/etc/init.d/{globus-gridftp-server|globus-gridftp-sshftp}`)
+* host certficate and key (two copies, one for the frontend and one for the
+backend(s))
 * trusted CA certificates
 * `grid-mapfile` configured
 
 ## Init scripts ##
 
-This repository provides System V init scripts for the Globus GridFTP server for the following Linux distributions:
+This repository provides System V init scripts for the Globus GridFTP server for
+the following Linux distributions:
 
 * Red Hat Enterprise Linux 6 (RHEL6)
 * Community ENTerprise Operating System 6 (CentOS6)
@@ -23,7 +27,7 @@ This repository provides System V init scripts for the Globus GridFTP server for
 
 ## Functionality ##
 
-The following functionality are provided:
+The following functionality is provided:
 
 * Dialogue installer (incl. defaults) - You can change any of the
 defaults (like installation dir, used certificates and keys, ports,
