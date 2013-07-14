@@ -65,14 +65,20 @@ end, too.)
 
 1. Download the most current tarball from [1] or head to the releases page on
 [2] and fetch a specific release
+
 2. Unpack to a temporary dir
+
 3. Enter the directory named after your target OS (e.g. SLES10, CentOS6, etc)
+
 4. Run the installer (preferrably as root)
+
 ```shell
 # ./install.sh
 ```
+
 5. After installation you should be able to start the GridFTP service with the
 following command (assuming you named your service `gridftpd`)
+
 ```shell
 # /etc/init.d/gridftpd start
 ```
