@@ -1,5 +1,14 @@
 # gridftpd - GridFTP server configuration made easy! #
 
+## Table of contents ##
+
+* [Description](#description)
+* [Prerequisites](#prerequisites)
+* [Init scripts](#init-scripts)
+* [Functionality](#functionality)
+* [Installation](#installation)
+* [License](#license)
+
 ## Description ##
 
 Get your Globus GridFTP server up and running in less than a minute.
@@ -51,6 +60,25 @@ configure those manually there. Background: The back ends are configured
 so that they only accept IPC connections from the specific front end on
 the same host. So the remote back ends have to accept the local front
 end, too.)
+
+## Installation ##
+
+1. Download the most current tarball from [1] or head to the releases page on
+[2] and fetch a specific release
+2. Unpack to a temporary dir
+3. Enter the directory named after your target OS (e.g. SLES10, CentOS6, etc)
+4. Run the installer (preferrably as root)
+```shell
+# ./install.sh
+```
+5. After installation you should be able to start the GridFTP service with the
+following command (assuming you named your service `gridftpd`)
+```shell
+# /etc/init.d/gridftpd start
+```
+
+[1]: https://github.com/fr4nk5ch31n3r/gridftpd/archive/master.tar.gz
+[2]: https://github.com/fr4nk5ch31n3r/gridftpd/releases
 
 ## License ##
 
