@@ -61,6 +61,18 @@ so that they only accept IPC connections from the specific front end on
 the same host. So the remote back ends have to accept the local front
 end, too.)
 
+  * start/stop up to one (unprivileged) GridFTP frontend process and one or
+multiple (privileged) GridFTP backend processes
+
+  * per process configuration files
+
+  * activate a specific frontend or specific backends by making its
+configuration files executable or non-executable
+
+  * list status of all activated and running GridFTP service processes
+
+  * reload changed configuration files on the fly
+
 ## Installation ##
 
   1. Download the most current tarball from [1] or head to the releases page on
