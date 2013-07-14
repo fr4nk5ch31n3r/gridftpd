@@ -1,0 +1,778 @@
+#!/bin/sh
+
+:<<COPYRIGHT
+
+Copyright (C) 2013 Frank Scheiner
+
+The program is distributed under the terms of the GNU General Public License
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+COPYRIGHT
+
+# /etc/init.d/gridftpd
+#
+#   and its symbolic link
+#
+# /usr/sbin/rcgridftpd
+#
+### BEGIN INIT INFO
+# Provides: gridftpd
+# Required-Start: $local_fs $network $named $time $remote_fs
+# Required-Stop: $local_fs $network $named $time $remote_fs
+# Default-Start: 3 5
+# Default-Stop: 0 1 2 6
+# Description: Start the Globus GridFTP daemon(s)
+### END INIT INFO
+
+# default location
+GRIDFTPD_SYSCONFIG=/etc/sysconfig/gridftpd
+
+# location determined by installation via installer
+#sed#GRIDFTPD_SYSCONFIG=<INIT_SCRIPT_CONFIGURATION>
+
+test -r $GRIDFTPD_SYSCONFIG || exit 6
+. $GRIDFTPD_SYSCONFIG
+export GLOBUS_LOCATION
+
+test -x $GRIDFTPD_BIN || { echo "$GRIDFTPD_BIN not installed";
+        if [ "$1" = "stop" ]; then
+        	exit 0
+        else
+        	exit 5
+        fi; }
+        
+GRIDFTPD_OS="SLES"
+# Signal for reload configuration files
+GRIDFTPD_RELOAD_SIGNAL="HUP"
+
+. /etc/rc.status
+
+# Shell functions sourced from /etc/rc.status:
+#      rc_check         check and set local and overall rc status
+#      rc_status        check and set local and overall rc status
+#      rc_status -v     ditto but be verbose in local rc status
+#      rc_status -v -r  ditto and clear the local rc status
+#      rc_failed        set local and overall rc status to failed
+#      rc_reset         clear local rc status (overall remains)
+#      rc_exit          exit appropriate to overall rc status
+
+#  replacement for checkproc
+checkProc()
+{
+	#  determines if a process is running by evaluating the related pidfile
+	#+ and the full path to the executable
+	#
+	#  usage:
+	#+ checkProc <PIDFILE> 	<EXE_NAME>
+	#
+	#  returns:
+	#+ 0 - process is running
+	#+ 1 - process is "dead", but <PIDFILE> exists
+	#+ 3 - process is not running
+	#+ 255 - unknown state
+	#
+	#  NOTICE:
+	#+ This is not a complete replacement for "checkproc" but only supports
+	#+ the features needed by SLES10/11's "rc_status".
+
+	local pidFile="$1"
+
+	local pid="$( cat "$pidFile" 2>/dev/null )"
+
+	local exeName="$2"
+
+	#  No pidfile existing
+	if [ ! -e "$pidFile" ]; then
+	
+		return 3
+		
+	#  Pidfile exists, but process is dead
+	elif test -e "$pidFile" && \
+             ( ! kill -0 "$pid" &>/dev/null || \
+               ! ps -C "$exeName" -o pid 2>&1 | grep "$pid" &>/dev/null ); then
+               
+		return 1
+		
+	#  process is running
+	elif test -e "$pidFile" && \
+	     kill -0 "$pid" &>/dev/null && \
+             ps -C "$exeName" -o pid 2>&1 | grep "$pid" &>/dev/null; then
+             
+ 		return 0
+	fi
+	
+	return 255
+}
+
+################################################################################
+# Common for all gridftpd init scripts
+################################################################################
+startDaemon()
+{
+	local binary="$1"
+	local binaryArgs="$2"
+	local user="$3"
+	local pidFile="$4" # unnused on SLES/RHEL/CentOS/SL!
+	local os="$5"
+	
+	if [ "$os" == "Debian" -o \
+	     "$os" == "Ubuntu" ]; then
+	     
+		start-stop-daemon --start \
+				  --quiet \
+				  --oknodo \
+				  --chuid "$user" \
+				  --pidfile "$pidFile" \
+				  --exec "$binary" \
+				  -- "$binaryArgs"
+	
+	elif [ "$os" == "SLES" -o \
+	       "$os" == "RHEL" -o \
+	       "$os" == "CentOS" -o \
+	       "$os" == "SL" ]; then
+	
+		su -c "$binary $binaryArgs" \
+		   "$user" &>/dev/null
+	fi
+	
+	return
+}
+
+
+stopDaemon()
+{
+	local pidFile="$1"
+	local gridftpdComponentConfigFile="$2" # unused on Debian/Ubuntu/SLES!
+	local os="$3"
+	
+	if [ "$os" == "Debian" -o \
+	     "$os" == "Ubuntu" ]; then
+	     
+		start-stop-daemon --stop \
+				  --quiet \
+				  --oknodo \
+				  --pidfile "$pidFile"
+				  
+	elif [ "$os" == "RHEL" -o \
+	       "$os" == "CentOS" -o \
+	       "$os" == "SL" ]; then
+	
+		local gridftpdComponentName=$( basename "$gridftpdComponentConfigFile" | sed -e 's/.conf//' )
+	
+		if [ -n `pidfileofproc "$gridftpdComponentName"` ] ; then
+			killproc "$gridftpdComponentName" # also removes PID file!
+		else
+			/bin/false
+		fi
+	
+	elif [ "$os" == "SLES" ]; then
+		
+		kill $( cat "$pidFile" 2>/dev/null ) &>/dev/null
+	fi
+	
+	return
+}
+
+
+reloadDaemon()
+{
+	local binary="$1"
+	local gridftpdComponentConfigFile="$2" # unused on Debian/Ubuntu/SLES!	
+	local pidFile="$3" # unnused on SLES/RHEL/CentOS/SL!
+	local reloadSignal="$4"	
+	local os="$5"
+	
+	if [ "$os" == "Debian" -o \
+	     "$os" == "Ubuntu" ]; then
+	
+		start-stop-daemon --stop \
+				  --signal "$reloadSignal" \
+				  --quiet \
+				  --oknodo \
+				  --pidfile "$pidFile" \
+				  --exec "$binary"
+
+	elif [ "$os" == "RHEL" -o \
+	       "$os" == "CentOS" -o \
+	       "$os" == "SL" ]; then
+	
+		local gridftpdComponentName=$( basename "$gridftpdComponentConfigFile" | sed -e 's/.conf//' )
+		
+		if [ -n "`pidfileofproc $gridftpdComponentName`" ] ; then
+		    killproc "$gridftpdComponentName" -"$reloadSignal"
+		else
+		    /bin/false
+		fi
+	
+	elif [ "$os" == "SLES" ]; then
+	
+		kill -"$reloadSignal" $( cat "$pidFile" 2>/dev/null ) &>/dev/null
+	fi
+	
+	return
+}
+
+
+startGridftpd()
+{
+	local GRIDFTPD_BIN="$1"	
+	local GRIDFTPD_PIDFILES_PATH="$2"
+	local GRIDFTPD_HOST_FQDN="$3"
+	local GRIDFTPD_TCP_PORT_RANGE="$4"
+	local GRIDFTPD_TCP_SOURCE_RANGE="$5"
+	local GRIDFTPD_GRIDMAPFILE="$6"
+
+	local GRIDFTPD_FRONTEND_CONFIG="$7"
+	local GRIDFTPD_FRONTEND_CERT="$8"
+	local GRIDFTPD_FRONTEND_KEY="$9"
+	local GRIDFTPD_FRONTEND_RUNASUSER="${10}"
+	local GRIDFTPD_FRONTEND_PORT="${11}"
+
+	local GRIDFTPD_BACKEND_CONFIG_PREFIX="${12}"
+	local GRIDFTPD_BACKEND_CERT="${13}"
+	local GRIDFTPD_BACKEND_KEY="${14}"
+	local GRIDFTPD_BACKEND_RUNASUSER="${15}"
+	local GRIDFTPD_BACKEND_PORT_FIRST="${16}"
+	
+	local GRIDFTPD_OS="${17}"
+
+	local GRIDFTPD_ADDITIONAL_BACKENDS="${18}"
+
+	local GRIDFTPD_BACKEND_RET_VALUE=0
+	local GRIDFTPD_FRONTEND_RET_VALUE=0
+
+	local INDEX=1
+	local REMOTE_NODES_LIST=""
+	
+	# create dir for PID files
+	mkdir -p "$GRIDFTPD_PIDFILES_PATH" || return 1
+
+	#  start as many backends as needed and activated
+	for GRIDFTPD_BACKEND_CONFIG in $( ls -1 ${GRIDFTPD_BACKEND_CONFIG_PREFIX}*.conf ); do
+
+		#  backend activated?
+		if [ -x $GRIDFTPD_BACKEND_CONFIG ]; then
+
+			#  point the daemon to the correct cert and key (owned
+			#+ by "root")
+			export X509_USER_CERT=$GRIDFTPD_BACKEND_CERT
+			export X509_USER_KEY=$GRIDFTPD_BACKEND_KEY
+
+			#  define Globus TCP port range and source port range
+			export GLOBUS_TCP_PORT_RANGE=$GRIDFTPD_TCP_PORT_RANGE
+			export GLOBUS_TCP_SOURCE_RANGE=$GRIDFTPD_TCP_SOURCE_RANGE
+			
+			# To allow different grid-mapfiles for different gridftp
+			# services the current grid-mapfile's name is
+			# explicitely exported
+			export GRIDMAP=$GRIDFTPD_GRIDMAPFILE
+
+			#  create logfiles, if not already existing
+			if [ ! -e /var/log/gridftpd/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).log ]; then
+				#  create directory
+				mkdir -p /var/log/gridftpd &>/dev/null
+				#  create logfile
+				touch /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').log
+			fi
+
+			#  "netlogger style" logfile
+			if [ ! -e /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog ]; then
+				#  create directory
+				mkdir -p /var/log/gridftpd &>/dev/null
+				#  create logfile
+				touch /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog
+			fi
+
+			##  determine TCP port used by this backend process
+			#GRIDFTPD_BACKEND_PORT=$( grep 'port [[:digit:]]' < $GRIDFTPD_BACKEND_CONFIG | cut -d ' ' -f 2 )
+			local GRIDFTPD_BACKEND_PORT=$(( $GRIDFTPD_BACKEND_PORT_FIRST + $(( $INDEX - 1 )) ))
+
+			# fill list of data nodes
+			if [[ "$REMOTE_NODES_LIST" == "" ]]; then
+				REMOTE_NODES_LIST="${GRIDFTPD_HOST_FQDN}:${GRIDFTPD_BACKEND_PORT}"
+			else
+				REMOTE_NODES_LIST="$REMOTE_NODES_LIST,${GRIDFTPD_HOST_FQDN}:${GRIDFTPD_BACKEND_PORT}"
+			fi
+
+			# configure hostname, port, etc.
+			#echo "hostname ${GRIDFTPD_HOST_FQDN}" > "${GRIDFTPD_BACKEND_CONFIG}.d/hostname"
+			#echo "port ${GRIDFTPD_BACKEND_PORT}" > "${GRIDFTPD_BACKEND_CONFIG}.d/port"
+			#echo "ipc_allow_from ${GRIDFTPD_HOST_FQDN}" > "${GRIDFTPD_BACKEND_CONFIG}.d/ipc_allow_from"
+			
+			# Maybe a better approach would be to generate files for
+			# specific configuration options if they are not
+			# existing already, or if the existing files are older
+			# than the init script configuration.
+
+			local GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').pid"
+			touch $GRIDFTPD_BACKEND_PIDFILE && chown $GRIDFTPD_BACKEND_RUNASUSER $GRIDFTPD_BACKEND_PIDFILE
+
+			startDaemon "$GRIDFTPD_BIN" \
+			            "-S -c $GRIDFTPD_BACKEND_CONFIG -C ${GRIDFTPD_BACKEND_CONFIG}.d -exec $GRIDFTPD_BIN -pidfile $GRIDFTPD_BACKEND_PIDFILE -hostname $GRIDFTPD_HOST_FQDN -port $GRIDFTPD_BACKEND_PORT -ipc-allow-from $GRIDFTPD_HOST_FQDN" \
+			            "$GRIDFTPD_BACKEND_RUNASUSER" \
+			            "$GRIDFTPD_BACKEND_PIDFILE" \
+			            "$GRIDFTPD_OS"
+			            
+			#su -c "$GRIDFTPD_BIN -S -c $GRIDFTPD_BACKEND_CONFIG -exec $GRIDFTPD_BIN -pidfile $GRIDFTPD_BACKEND_PIDFILE" \
+                        #   $GRIDFTPD_BACKEND_RUNASUSER \
+                        #   &>/dev/null
+                           
+                        if [ $? -ne 0 ]; then
+                        	echo "$( echo $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ) couldn't be started."
+                        	exit 1
+                        else
+                        	local GRIDFTPD_BACKEND_RET_VALUE_TEMP=0
+                        fi
+
+			##  get PID of this GridFTP backend process...->1
+			#loopCounter=0
+			#GRIDFTPD_BACKEND_PID=""
+			##  check if the daemon has already started...->2
+			#while [ "$GRIDFTPD_BACKEND_PID" == "" ]; do
+			#	GRIDFTPD_BACKEND_PID=$( fuser -n tcp $GRIDFTPD_BACKEND_PORT 2>/dev/null | sed -e 's/ *//' )
+			#	sleep 0.25
+			#	#  ->2...but don't wait forever!
+			#	loopCounter=$(( $loopCounter + 1 ))
+			#	if [ "$loopCounter" == 16 ]; then
+			#		break
+			#	fi
+			#done
+			#
+			#if [ "$GRIDFTPD_BACKEND_PID" != "" ]; then
+			#	#  ->1...and save it
+			#	GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').pid"
+			#	echo "$GRIDFTPD_BACKEND_PID" \
+                        #            > $GRIDFTPD_BACKEND_PIDFILE
+			#	GRIDFTPD_BACKEND_RET_VALUE_TEMP=0
+			#else
+			#	GRIDFTPD_BACKEND_RET_VALUE_TEMP=1
+			#fi
+
+		else
+			local GRIDFTPD_BACKEND_RET_VALUE_TEMP=0
+		fi
+
+		#  set return value for this part of the GridFTP service
+		#+ accordingly and save errors
+		if [ $GRIDFTPD_BACKEND_RET_VALUE -ne 1 ]; then
+			local GRIDFTPD_BACKEND_RET_VALUE=$GRIDFTPD_BACKEND_RET_VALUE_TEMP
+		fi
+
+		INDEX=$(( $INDEX + 1 ))
+
+	done
+
+	#  frontend activated?
+	if [ -x $GRIDFTPD_FRONTEND_CONFIG ]; then
+
+		#  point the daemon to the correct cert and key (owned
+		#+ by the frontend user)
+		export X509_USER_CERT=$GRIDFTPD_FRONTEND_CERT
+		export X509_USER_KEY=$GRIDFTPD_FRONTEND_KEY
+		
+		#  As the frontend is running as user, the default location for
+		#+ the grid-mapfile would be located in $HOME of the user.
+		#+ Therefore it has to be defined here to be in the default
+		#+ location:
+		export GRIDMAP=$GRIDFTPD_GRIDMAPFILE
+		
+		#  define Globus TCP port range and source port range
+		export GLOBUS_TCP_PORT_RANGE=$GRIDFTPD_TCP_PORT_RANGE
+		export GLOBUS_TCP_SOURCE_RANGE=$GRIDFTPD_TCP_SOURCE_RANGE
+
+		#  create logfile, if needed
+		if [ ! -e /var/log/gridftpd/gridftpd_frontend.log ]; then
+			#  create directory
+			mkdir -p /var/log/gridftpd &>/dev/null
+			#  create logfile
+			touch /var/log/gridftpd/gridftpd_frontend.log
+			#  change owner to the user that runs the frontend
+			chown $GRIDFTPD_FRONTEND_RUNASUSER /var/log/gridftpd/gridftpd_frontend.log
+		fi
+
+		#  "netlogger style" logfile
+		if [ ! -e /var/log/gridftpd/gridftpd_frontend.netlog ]; then
+			#  create directory
+			mkdir -p /var/log/gridftpd &>/dev/null
+			#  create logfile
+			touch /var/log/gridftpd/gridftpd_frontend.netlog
+			#  change owner to "globus" for frontend
+			chown $GRIDFTPD_FRONTEND_RUNASUSER /var/log/gridftpd/gridftpd_frontend.netlog
+		fi
+
+		# configure hostname, port, etc.
+		#echo "hostname ${GRIDFTPD_HOST_FQDN}" > "${GRIDFTPD_FRONTEND_CONFIG}.d/hostname"
+		#echo "port ${GRIDFTPD_FRONTEND_PORT}" > "${GRIDFTPD_FRONTEND_CONFIG}.d/port"
+		if [[ "$GRIDFTPD_ADDITIONAL_BACKENDS" != "" ]]; then
+			REMOTE_NODES_LIST="${REMOTE_NODES_LIST},${GRIDFTPD_ADDITIONAL_BACKENDS}"
+		fi
+
+		##  determine TCP port used by this frontend process
+		#GRIDFTPD_FRONTEND_PORT=$( grep 'port [[:digit:]]' < $GRIDFTPD_FRONTEND_CONFIG | cut -d ' ' -f 2 )
+
+		local GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//').pid"
+		touch $GRIDFTPD_FRONTEND_PIDFILE && chown $GRIDFTPD_FRONTEND_RUNASUSER $GRIDFTPD_FRONTEND_PIDFILE
+
+		startDaemon "$GRIDFTPD_BIN" \
+			    "-S -c $GRIDFTPD_FRONTEND_CONFIG -C ${GRIDFTPD_FRONTEND_CONFIG}.d -exec $GRIDFTPD_BIN -pidfile $GRIDFTPD_FRONTEND_PIDFILE -hostname $GRIDFTPD_HOST_FQDN -port $GRIDFTPD_FRONTEND_PORT -remote-nodes $REMOTE_NODES_LIST" \
+			    "$GRIDFTPD_FRONTEND_RUNASUSER" \
+			    "$GRIDFTPD_FRONTEND_PIDFILE" \
+			    "$GRIDFTPD_OS"
+
+		#su -c "$GRIDFTPD_BIN -S -c $GRIDFTPD_FRONTEND_CONFIG -exec $GRIDFTPD_BIN -pidfile $GRIDFTPD_FRONTEND_PIDFILE" \
+                #   $GRIDFTPD_FRONTEND_RUNASUSER \
+                #   &>/dev/null
+                   
+                if [ $? -ne 0 ]; then
+                	echo "$( echo $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//' ) couldn't be started."
+                	exit 1
+                else
+                	local GRIDFTPD_FRONTEND_RET_VALUE=0
+                fi
+
+		##  get PID of GridFTP frontend process...->1
+		#loopCounter=0
+		#GRIDFTPD_FRONTEND_PID=""
+		##  check if the daemon has already started...->2
+		#while [ "$GRIDFTPD_FRONTEND_PID" == "" ]; do
+		#	GRIDFTPD_FRONTEND_PID=$( fuser -n tcp $GRIDFTPD_FRONTEND_PORT 2>/dev/null | sed -e 's/ *//' )
+		#	sleep 0.25
+		#	#  ->2...but don't wait forever!			
+		#	loopCounter=$(( $loopCounter + 1 ))
+		#	if [ "$loopCounter" == 16 ]; then
+		#		break
+		#	fi
+		#done
+		#
+		#if [ "$GRIDFTPD_FRONTEND_PID" != "" ]; then
+		#	#  ->1...and save it
+		#	GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//').pid"
+		#	echo "$GRIDFTPD_FRONTEND_PID" \
+                #             > $GRIDFTPD_FRONTEND_PIDFILE
+		#	GRIDFTPD_FRONTEND_RET_VALUE=0
+		#else
+		#	GRIDFTPD_FRONTEND_RET_VALUE=1
+		#fi
+
+	else
+		local GRIDFTPD_FRONTEND_RET_VALUE=0
+	fi
+
+	local GRIDFTPD_RET_VALUE=$(( $GRIDFTPD_FRONTEND_RET_VALUE && \
+                                     $GRIDFTPD_BACKEND_RET_VALUE ))
+                                     
+	return $GRIDFTPD_RET_VALUE
+}
+
+
+stopGridftpd()
+{
+	local GRIDFTPD_PIDFILES_PATH="$1"
+
+	local GRIDFTPD_FRONTEND_CONFIG="$2"
+
+	local GRIDFTPD_BACKEND_CONFIG_PREFIX="$3"
+	
+	local GRIDFTPD_OS="$4"
+	
+	local STOP_BACKEND_RET_VALUE=0
+	local STOP_FRONTEND_RET_VALUE=0
+
+	#  stop frontend if running
+	if [ -x $GRIDFTPD_FRONTEND_CONFIG ]; then
+		local GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$( basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//' ).pid"
+		
+		stopDaemon "$GRIDFTPD_FRONTEND_PIDFILE" \
+			   "$GRIDFTPD_FRONTEND_CONFIG" \
+			   "$GRIDFTPD_OS"
+		
+		#kill $( cat $GRIDFTPD_FRONTEND_PIDFILE 2>/dev/null ) &>/dev/null
+	
+		local STOP_FRONTEND_RET_VALUE="$?"
+
+		#  remove PID file only if kill returned "0"
+		if [ $STOP_FRONTEND_RET_VALUE -eq 0 ]; then
+			rm -f $GRIDFTPD_FRONTEND_PIDFILE &>/dev/null
+		fi
+	else
+		local STOP_FRONTEND_RET_VALUE=0
+	fi
+
+	#  stop backends if running
+	for GRIDFTPD_BACKEND_CONFIG in $( ls -1 ${GRIDFTPD_BACKEND_CONFIG_PREFIX}*.conf ); do
+		if [ -x $GRIDFTPD_BACKEND_CONFIG ]; then
+			local GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').pid"
+			
+			stopDaemon "$GRIDFTPD_BACKEND_PIDFILE" \
+				   "$GRIDFTPD_BACKEND_CONFIG" \
+				   "$GRIDFTPD_OS"
+			
+			#kill $( cat "$GRIDFTPD_BACKEND_PIDFILE" 2>/dev/null ) &>/dev/null
+			
+			local STOP_BACKEND_RET_VALUE_TEMP="$?"
+			
+			#  remove PID file only if kill returned "0"
+			if [ $STOP_BACKEND_RET_VALUE_TEMP -eq 0 ]; then
+				rm -f "$GRIDFTPD_BACKEND_PIDFILE" &>/dev/null
+			fi
+		else
+			local STOP_BACKEND_RET_VALUE_TEMP=0
+		fi
+	
+		#  set return value for this part of the GridFTP service
+		#+ accordingly and save errors
+		if [ $STOP_BACKEND_RET_VALUE -ne 1 ]; then
+			local STOP_BACKEND_RET_VALUE=$STOP_BACKEND_RET_VALUE_TEMP			
+		fi	
+
+	done
+
+	local STOP_RET_VALUE=$(( $STOP_FRONTEND_RET_VALUE && \
+                                 $STOP_BACKEND_RET_VALUE ))
+
+	return $STOP_RET_VALUE
+}
+
+
+reloadGridftpd()
+{
+	local GRIDFTPD_BIN="$1"
+	local GRIDFTPD_PIDFILES_PATH="$2"
+
+	local GRIDFTPD_FRONTEND_CONFIG="$3"
+
+	local GRIDFTPD_BACKEND_CONFIG_PREFIX="$4"
+	
+	local GRIDFTPD_RELOAD_SIGNAL="$5"
+	
+	local GRIDFTPD_OS="$6"
+	
+	local RELOAD_BACKEND_RET_VALUE=0
+	local RELOAD_FRONTEND_RET_VALUE=0
+	
+	#  reload the config files of all GridFTP daemons
+	#  reload the frontend
+	if [ -x $GRIDFTPD_FRONTEND_CONFIG ]; then
+		GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//').pid"
+		
+		reloadDaemon "$GRIDFTPD_BIN" \
+			     "$GRIDFTPD_FRONTEND_CONFIG" \
+			     "$GRIDFTPD_FRONTEND_PIDFILE" \
+			     "$GRIDFTPD_RELOAD_SIGNAL" \
+			     "$GRIDFTPD_OS"
+		
+		#kill -${GRIDFTPD_RELOAD_SIGNAL} $( cat $GRIDFTPD_FRONTEND_PIDFILE 2>/dev/null ) &>/dev/null
+
+		local RELOAD_FRONTEND_RET_VALUE="$?"
+	else
+		local RELOAD_FRONTEND_RET_VALUE=0
+	fi
+
+	#  reload all backends
+	for GRIDFTPD_BACKEND_CONFIG in $( ls -1 ${GRIDFTPD_BACKEND_CONFIG_PREFIX}*.conf ); do
+		if [ -x $GRIDFTPD_BACKEND_CONFIG ]; then
+			GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).pid"
+			
+			reloadDaemon "$GRIDFTPD_BIN" \
+			     	     "$GRIDFTPD_BACKEND_CONFIG" \
+			     	     "$GRIDFTPD_BACKEND_PIDFILE" \
+			     	     "$GRIDFTPD_RELOAD_SIGNAL" \
+			     	     "$GRIDFTPD_OS"
+			
+			#kill -${GRIDFTPD_RELOAD_SIGNAL} $( cat $GRIDFTPD_BACKEND_PIDFILE 2>/dev/null ) &>/dev/null
+
+			RELOAD_BACKEND_RET_VALUE_TEMP="$?"
+		else
+			RELOAD_BACKEND_RET_VALUE_TEMP=0
+		fi
+
+		#  set return value for this part of the GridFTP service
+		#+ accordingly and save errors
+		if [ "$RELOAD_BACKEND_RET_VALUE" != "1" ]; then
+			RELOAD_BACKEND_RET_VALUE=$RELOAD_BACKEND_RET_VALUE_TEMP			
+		fi
+	done
+
+	RELOAD_RET_VALUE=$(( $RELOAD_FRONTEND_RET_VALUE && \
+                          $RELOAD_BACKEND_RET_VALUE ))
+
+	return $RELOAD_RET_VALUE
+}
+################################################################################
+
+# First reset status of this service
+rc_reset
+
+case "$1" in
+    start)
+        echo -n "Starting Globus GridFTP service..."
+
+	startGridftpd "$GRIDFTPD_BIN" \
+		      "$GRIDFTPD_PIDFILES_PATH" \
+		      "$GRIDFTPD_HOST_FQDN" \
+		      "$GRIDFTPD_TCP_PORT_RANGE" \
+		      "$GRIDFTPD_TCP_SOURCE_RANGE" \
+		      "$GRIDFTPD_GRIDMAPFILE" \
+		      "$GRIDFTPD_FRONTEND_CONFIG" \
+		      "$GRIDFTPD_FRONTEND_CERT" \
+		      "$GRIDFTPD_FRONTEND_KEY" \
+		      "$GRIDFTPD_FRONTEND_RUNASUSER" \
+		      "$GRIDFTPD_FRONTEND_PORT" \
+		      "$GRIDFTPD_BACKEND_CONFIG_PREFIX" \
+		      "$GRIDFTPD_BACKEND_CERT" \
+		      "$GRIDFTPD_BACKEND_KEY" \
+		      "$GRIDFTPD_BACKEND_RUNASUSER" \
+		      "$GRIDFTPD_BACKEND_PORT_FIRST" \
+		      "$GRIDFTPD_OS" \
+		      "$GRIDFTPD_ADDITIONAL_BACKENDS"
+
+	#  set return value accordingly
+	if [ $? -eq 0 ]; then
+		/bin/true
+	else
+		/bin/false
+	fi
+
+	# Remember status and be verbose
+	rc_status -v
+	;;
+
+    stop)
+	echo -n "Stopping Globus GridFTP service..."
+
+	stopGridftpd "$GRIDFTPD_PIDFILES_PATH" \
+		     "$GRIDFTPD_FRONTEND_CONFIG" \
+		     "$GRIDFTPD_BACKEND_CONFIG_PREFIX" \
+		     "$GRIDFTPD_OS"
+
+	#  set return value accordingly
+	if [ $? -eq 0 ]; then
+		/bin/true
+	else
+		/bin/false
+	fi
+
+	# Remember status and be verbose
+	rc_status -v
+	;;
+
+    try-restart)
+        ## Stop the service and if this succeeds (i.e. the 
+        ## service was running before), start it again.
+        $0 status >/dev/null && $0 restart
+
+        # Remember status and be quiet
+        rc_status
+        ;;
+
+    restart)
+        ## Stop the service and regardless of whether it was
+        ## running or not, start it again.
+        $0 stop
+        $0 start
+
+        # Remember status and be quiet
+        rc_status
+        ;;
+
+    force-reload|reload)
+	## Signal the daemon to reload its config. Most daemons
+	## do this on signal 1 (SIGHUP).
+
+	echo -n "Reload Globus GridFTP service..."
+
+	reloadGridftpd "$GRIDFTPD_BIN" \
+		       "$GRIDFTPD_PIDFILES_PATH" \
+		       "$GRIDFTPD_FRONTEND_CONFIG" \
+		       "$GRIDFTPD_BACKEND_CONFIG_PREFIX" \
+		       "$GRIDFTPD_RELOAD_SIGNAL" \
+		       "$GRIDFTPD_OS"
+
+	#  set return value accordingly
+	if [ $? -eq 0 ]; then
+		/bin/true
+	else
+		/bin/false
+	fi
+
+        rc_status -v
+
+        ;;
+
+    status)
+	echo "Checking for Globus GridFTP service..."
+        #  Check status with "checkProc()", if process is running, "checkproc()"
+	#+ will return with exit status 0.
+
+	#  check frontend service
+	if [ -x $GRIDFTPD_FRONTEND_CONFIG ]; then
+		echo -en "Globus GridFTP frontend "
+		GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//').pid"
+
+		checkProc "$GRIDFTPD_FRONTEND_PIDFILE" "$(basename $GRIDFTPD_BIN)"
+
+		rc_status -v
+	fi
+
+	#  check backends if running
+	for GRIDFTPD_BACKEND_CONFIG in $( ls -1 ${GRIDFTPD_BACKEND_CONFIG_PREFIX}*.conf ); do
+		if [ -x $GRIDFTPD_BACKEND_CONFIG ]; then
+			GRIDFTPD_BACKEND_STRING=$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' -e 's/gridftpd_//' -e 's/_/ /' )
+			echo -en "Globus GridFTP $GRIDFTPD_BACKEND_STRING "
+			GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).pid"
+			
+			checkProc "$GRIDFTPD_BACKEND_PIDFILE" "$(basename $GRIDFTPD_BIN)"
+
+			rc_status -v	
+		fi
+	done
+
+	;;
+
+    probe)
+	#  Probe for the necessity of a reload and print out the argument which
+	#+ is required for a reload.
+
+	RELOAD_NEEDED=1
+
+	#  test all config files
+	#  test frontend config file
+	if [ -x $GRIDFTPD_FRONTEND_CONFIG ]; then
+		GRIDFTPD_FRONTEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$(basename $GRIDFTPD_FRONTEND_CONFIG | sed -e 's/.conf//').pid"
+
+		test $GRIDFTPD_FRONTEND_CONFIG -nt $GRIDFTPD_FRONTEND_PIDFILE && RELOAD_NEEDED=0
+	fi
+
+	#  test backend config files
+	for GRIDFTPD_BACKEND_CONFIG in $( ls -1 ${GRIDFTPD_BACKEND_CONFIG_PREFIX}*.conf ); do
+		if [ -x $GRIDFTPD_BACKEND_CONFIG ]; then
+			GRIDFTPD_BACKEND_PIDFILE="$GRIDFTPD_PIDFILES_PATH/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).pid"
+			test $GRIDFTPD_BACKEND_CONFIG -nt $GRIDFTPD_BACKEND_PIDFILE && RELOAD_NEEDED=0
+		fi
+	done
+
+	if [ $RELOAD_NEEDED -eq 0 ]; then
+		echo reload
+	fi
+
+	;;
+
+    *)
+	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|probe}"
+	exit 1
+	;;
+esac
+rc_exit
+
