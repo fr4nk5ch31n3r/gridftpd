@@ -50,7 +50,7 @@ INFO
 ### END INIT INFO
 
 # source function library
-. "etc/rc.d/init.d/functions"
+. "/etc/rc.d/init.d/functions"
 
 prog="gridftpd"
 # For manual installation
