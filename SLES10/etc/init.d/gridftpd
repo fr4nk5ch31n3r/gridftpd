@@ -3,6 +3,7 @@
 :<<COPYRIGHT
 
 Copyright (C) 2013 Frank Scheiner
+Copyright (C) 2014 Frank Scheiner, HLRS, Universitaet Stuttgart
 
 The program is distributed under the terms of the GNU General Public License
 
@@ -56,6 +57,10 @@ test -x $GRIDFTPD_BIN || { echo "$GRIDFTPD_BIN not installed";
 GRIDFTPD_OS="SLES"
 # Signal for reload configuration files
 GRIDFTPD_RELOAD_SIGNAL="HUP"
+
+GRIDFTPD_SERVICE_NAME="gridftpd"
+# For manual installation
+#sed#GRIDFTPD_SERVICE_NAME="<GRIDFTPD_SERVICE_NAME>"
 
 . /etc/rc.status
 
@@ -249,6 +254,7 @@ startGridftpd()
 	local GRIDFTPD_OS="${17}"
 
 	local GRIDFTPD_ADDITIONAL_BACKENDS="${18}"
+	local GRIDFTPD_SERVICE_NAME="${19}"
 
 	local GRIDFTPD_BACKEND_RET_VALUE=0
 	local GRIDFTPD_FRONTEND_RET_VALUE=0
@@ -280,19 +286,19 @@ startGridftpd()
 			export GRIDMAP=$GRIDFTPD_GRIDMAPFILE
 
 			#  create logfiles, if not already existing
-			if [ ! -e /var/log/gridftpd/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).log ]; then
+			if [ ! -e /var/log/${GRIDFTPD_SERVICE_NAME}/$( basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//' ).log ]; then
 				#  create directory
-				mkdir -p /var/log/gridftpd &>/dev/null
+				mkdir -p /var/log/${GRIDFTPD_SERVICE_NAME} &>/dev/null
 				#  create logfile
-				touch /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').log
+				touch /var/log/${GRIDFTPD_SERVICE_NAME}/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').log
 			fi
 
 			#  "netlogger style" logfile
-			if [ ! -e /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog ]; then
+			if [ ! -e /var/log/${GRIDFTPD_SERVICE_NAME}/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog ]; then
 				#  create directory
-				mkdir -p /var/log/gridftpd &>/dev/null
+				mkdir -p /var/log/${GRIDFTPD_SERVICE_NAME} &>/dev/null
 				#  create logfile
-				touch /var/log/gridftpd/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog
+				touch /var/log/${GRIDFTPD_SERVICE_NAME}/$(basename $GRIDFTPD_BACKEND_CONFIG | sed -e 's/.conf//').netlog
 			fi
 
 			##  determine TCP port used by this backend process
@@ -393,21 +399,21 @@ startGridftpd()
 		export GLOBUS_TCP_SOURCE_RANGE=$GRIDFTPD_TCP_SOURCE_RANGE
 
 		#  create logfile, if needed
-		if [ ! -e /var/log/gridftpd/gridftpd_frontend.log ]; then
+		if [ ! -e /var/log/${GRIDFTPD_SERVICE_NAME}/gridftpd_frontend.log ]; then
 			#  create directory
-			mkdir -p /var/log/gridftpd &>/dev/null
+			mkdir -p /var/log/${GRIDFTPD_SERVICE_NAME} &>/dev/null
 			#  create logfile
-			touch /var/log/gridftpd/gridftpd_frontend.log
+			touch /var/log/${GRIDFTPD_SERVICE_NAME}/gridftpd_frontend.log
 			#  change owner to the user that runs the frontend
 			chown $GRIDFTPD_FRONTEND_RUNASUSER /var/log/gridftpd/gridftpd_frontend.log
 		fi
 
 		#  "netlogger style" logfile
-		if [ ! -e /var/log/gridftpd/gridftpd_frontend.netlog ]; then
+		if [ ! -e /var/log/${GRIDFTPD_SERVICE_NAME}/gridftpd_frontend.netlog ]; then
 			#  create directory
-			mkdir -p /var/log/gridftpd &>/dev/null
+			mkdir -p /var/log/${GRIDFTPD_SERVICE_NAME} &>/dev/null
 			#  create logfile
-			touch /var/log/gridftpd/gridftpd_frontend.netlog
+			touch /var/log/${GRIDFTPD_SERVICE_NAME}/gridftpd_frontend.netlog
 			#  change owner to "globus" for frontend
 			chown $GRIDFTPD_FRONTEND_RUNASUSER /var/log/gridftpd/gridftpd_frontend.netlog
 		fi
@@ -636,7 +642,8 @@ case "$1" in
 		      "$GRIDFTPD_BACKEND_RUNASUSER" \
 		      "$GRIDFTPD_BACKEND_PORT_FIRST" \
 		      "$GRIDFTPD_OS" \
-		      "$GRIDFTPD_ADDITIONAL_BACKENDS"
+		      "$GRIDFTPD_ADDITIONAL_BACKENDS" \
+		      "$GRIDFTPD_SERVICE_NAME"
 
 	#  set return value accordingly
 	if [ $? -eq 0 ]; then
