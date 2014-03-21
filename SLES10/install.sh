@@ -2,6 +2,28 @@
 
 # installer script
 
+:<<COPYRIGHT
+
+Copyright (C) 2013 Frank Scheiner
+Copyright (C) 2014 Frank Scheiner, HLRS, Universitaet Stuttgart
+
+The program is distributed under the terms of the GNU General Public License
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+COPYRIGHT
+
 INSTALLER_GRIDFTPD_VERSION=$( cat VERSION )
 INSTALLER_GRIDFTPD_OS=$( cat OS )
 
@@ -17,6 +39,34 @@ elif [[ "$INSTALLER_GRIDFTPD_OS" == "Debian" || \
 	
 	INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME="default"
 fi
+
+# utility function(s)
+getRemoteNodesString()
+{
+	local fqdn="$1"
+	local firstTcpPort="$2"
+	local numberOfNodes="$3"
+
+	local currentTcpPort=""
+	local remoteNodesString=""
+	local index=1
+
+	while [[ $index -le $numberOfNodes ]]; do
+
+		currentTcpPort=$(( $firstTcpPort + $index - 1 ))
+		if [[ "$remoteNodesString" == "" ]]; then
+
+			remoteNodesString="${fqdn}:${currentTcpPort}"
+		else
+			remoteNodesString="${remoteNodesString},${fqdn}:${currentTcpPort}"
+		fi
+		index=$(( $index + 1 ))
+	done
+
+	echo "$remoteNodesString"
+
+	return
+}
 
 # defaults
 #  Default settings for globus-gridftp-server. 
@@ -194,7 +244,7 @@ else
 	INSTALLER_GRIDFTPD_PIDFILES_PATH="$GRIDFTPD_PIDFILES_PATH"
 	echo ""
 
-	echo -n "Please provide the FQDN (fully qualified domain name) to use for this service. This needs to be the same FQDN as used in the host certificates for this service. Use \"FQDN\" if this should be determined dynamically during runtime of the init script with \$(hostname --fqdn). When using \"FQDN\", please make sure that \$(hostname --fqdn) returns the correct FQDN.  [$GRIDFTPD_HOST_FQDN]: "
+	echo -n "Please provide the FQDN (fully qualified domain name) to use for this service. This needs to be the same FQDN as used in the host certificates for this service. Use \"FQDN\" if this should be determined dynamically during runtime of the init script with \$(hostname --fqdn). When using \"FQDN\", please make sure that \$(hostname --fqdn) returns the correct FQDN. [$GRIDFTPD_HOST_FQDN]: "
 	read INSTALLER_GRIDFTPD_HOST_FQDN
 	if [[ "$INSTALLER_GRIDFTPD_HOST_FQDN" == "" ]]; then
 		INSTALLER_GRIDFTPD_HOST_FQDN="$GRIDFTPD_HOST_FQDN"
@@ -286,13 +336,12 @@ else
 		fi
 		echo ""
 	
-		echo -n "Please provide the TCP port the first back end should listen to (additional backends will use the subsequent TCP ports) [$GRIDFTPD_BACKEND_PORT_FIRST]: "
+		echo -n "Please provide the TCP port the first back end should listen to (additional backends will use the subsequent TCP ports, so make sure you have enough unused ports in this range) [$GRIDFTPD_BACKEND_PORT_FIRST]: "
 		read INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" == "" ]]; then
 			INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST="$GRIDFTPD_BACKEND_PORT_FIRST"
 		fi
 		echo ""
-
 
 		# TODO:
 		# Key and cert names should use the dynamically determined FQDN!
@@ -307,6 +356,17 @@ else
 		read INSTALLER_GRIDFTPD_BACKEND_KEY
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_KEY" == "" ]]; then
 			INSTALLER_GRIDFTPD_BACKEND_KEY="${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostkey_${INSTALLER_GRIDFTPD_HOST_FQDN}_backend.pem"
+		fi
+		echo ""
+
+		echo -n "Please provide any additional GridFTP front end(s) the back ends should allow to connect (<FQDN>[,<FQDN>[,[...]]]): "
+		read INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS
+		if [[ "$INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS" != "" ]]; then
+			# print a string with the remote-nodes string, e.g.
+			# host.domain.tld:2813,host.domain.tld:2814,[...] to allow for
+			# easier clustered or distributed installation
+			echo ""
+			echo "Please use the following string on the remote systems when asked for additional GridFTP back ends: $( getRemoteNodesString "$INSTALLER_GRIDFTPD_HOST_FQDN" "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" "$INSTALLER_GRIDFTPD_BACKENDS_NUMBER" )"
 		fi
 		echo ""
 	fi
@@ -356,16 +416,25 @@ else
 		
 		echo -n "Please provide any additional GridFTP back end(s) this front end should use (<FQDN>:<PORT>[,<FQDN>:<PORT>[,[...]]]): "
 		read INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS
+		if [[ "$INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS" != "" ]]; then
+			echo ""
+			echo "Please use the following string on the remote systems when asked for additional GridFTP front ends: $INSTALLER_GRIDFTPD_HOST_FQDN"
+		fi
+		echo ""
 	fi
-
+	echo "END OF CONFIGURATION"
+	echo ""
 fi
 
 ################################################################################
 # actual installation      
 ################################################################################
+
+echo -n "Starting installation"
+
 if [[ ! -e "$INSTALLER_GRIDFTPD_CONFIG_BASE_PATH" ]]; then
 
-	mkdir -p "$INSTALLER_GRIDFTPD_CONFIG_BASE_PATH"
+	mkdir -p "$INSTALLER_GRIDFTPD_CONFIG_BASE_PATH" && echo -n "."
 fi
 
 if [[ "$INSTALLER_CONFIGURE_BACKEND" == "yes" ]]; then
@@ -373,7 +442,8 @@ if [[ "$INSTALLER_CONFIGURE_BACKEND" == "yes" ]]; then
 	for INDEX in $( seq -w 1 $INSTALLER_GRIDFTPD_BACKENDS_NUMBER ); do
 	
 		INSTALLER_GRIDFTPD_BACKEND_CONFIG="${INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX}_#${INDEX}.conf"
-		cp ./etc/gridftpd/FQDN/gridftpd_backend.conf "$INSTALLER_GRIDFTPD_BACKEND_CONFIG"
+		cp ./etc/gridftpd/FQDN/gridftpd_backend.conf "$INSTALLER_GRIDFTPD_BACKEND_CONFIG" && echo -n "."
+		chmod +x "$INSTALLER_GRIDFTPD_BACKEND_CONFIG" && echo -n "."
 		# create configuration dir (NOTICE: The globus-gridftp-server
 		# seems to periodically check this dir for (new) files. This
 		# means, that reconfigurations done in this dir will be effective
@@ -381,14 +451,21 @@ if [[ "$INSTALLER_CONFIGURE_BACKEND" == "yes" ]]; then
 		# But remember that the main configuration file is always loaded
 		# last. So configurations made there will override configurations
 		# made in the configuration dir.)
-		mkdir "${INSTALLER_GRIDFTPD_BACKEND_CONFIG}.d"
+		mkdir "${INSTALLER_GRIDFTPD_BACKEND_CONFIG}.d" && echo -n "."
 	done
+
+	# also copy default backend configuration
+	INSTALLER_GRIDFTPD_BACKEND_DEFAULT_CONFIG="${INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX}_default.conf"
+	cp ./etc/gridftpd/FQDN/gridftpd_backend.conf "$INSTALLER_GRIDFTPD_BACKEND_DEFAULT_CONFIG" && echo -n "."
+	chmod +x "$INSTALLER_GRIDFTPD_BACKEND_DEFAULT_CONFIG" && echo -n "."
+	mkdir "${INSTALLER_GRIDFTPD_BACKEND_DEFAULT_CONFIG}.d" && echo -n "."
 fi
 
 if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "yes" ]]; then
 	
 	# copy default configuration
-	cp ./etc/gridftpd/FQDN/gridftpd_frontend.conf "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG"
+	cp ./etc/gridftpd/FQDN/gridftpd_frontend.conf "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG" && echo -n "."
+	chmod +x "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG" && echo -n "."
 	# create configuration dir (NOTICE: The globus-gridftp-server
 	# seems to periodically check this dir for (new) files. This
 	# means, that reconfigurations done in this dir will be effective
@@ -396,7 +473,7 @@ if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "yes" ]]; then
 	# But remember that the main configuration file is always loaded
 	# last. So configurations made there will override configurations
 	# made in the configuration dir.)
-	mkdir -p "${INSTALLER_GRIDFTPD_FRONTEND_CONFIG}.d"
+	mkdir -p "${INSTALLER_GRIDFTPD_FRONTEND_CONFIG}.d" && echo -n "."
 	
 fi
 
@@ -405,17 +482,17 @@ fi
 ################################################################################
 if [[ ! -e "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/init.d" ]]; then
 
-	mkdir -p "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/init.d"
+	mkdir -p "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/init.d" && echo -n "."
 fi
 
 INSTALLER_INIT_SCRIPT="${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/init.d/${INSTALLER_GRIDFTPD_SERVICE_NAME}"
 
-cp "./etc/init.d/gridftpd" "$INSTALLER_INIT_SCRIPT"
+cp "./etc/init.d/gridftpd" "$INSTALLER_INIT_SCRIPT" && echo -n "."
 
 # build init script configuration
 if [[ ! -e "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/${INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME}" ]]; then
 
-	mkdir -p "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/${INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME}"
+	mkdir -p "${INSTALLER_GRIDFTPD_INSTALL_PREFIX}/etc/${INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME}" && echo -n "."
 fi
 
 # TODO:
@@ -496,7 +573,8 @@ GRIDFTPD_ADDITIONAL_BACKENDS="${INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS}"
 ################################################################################
 #  configuration of backends
 ################################################################################
-# number of back ends to use
+# number of back ends to use (when reconfiguring, please make sure you have
+# enough unused TCP ports available for the configured back ends)
 GRIDFTPD_BACKENDS_NUMBER="$INSTALLER_GRIDFTPD_BACKENDS_NUMBER"
 
 #  user configuration
@@ -507,7 +585,8 @@ GRIDFTPD_BACKEND_RUNASUSER="$INSTALLER_GRIDFTPD_BACKEND_RUNASUSER"
 #+ There can be multiple backends!
 GRIDFTPD_BACKEND_CONFIG_PREFIX="$INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX"
 
-# Ports to listen on
+# Ports to listen on (this defines the first port, in addition
+# GRIDFTPD_BACKENDS_NUMBER - 1 ports will be used)
 GRIDFTPD_BACKEND_PORT_FIRST=$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST
 
 #  certificate and key
@@ -517,15 +596,19 @@ GRIDFTPD_BACKEND_PORT_FIRST=$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST
 GRIDFTPD_BACKEND_CERT="$INSTALLER_GRIDFTPD_BACKEND_CERT"
 GRIDFTPD_BACKEND_KEY="$INSTALLER_GRIDFTPD_BACKEND_KEY"
 
+GRIDFTPD_ADDITIONAL_FRONTENDS="${INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS}"
+
 EOF
 
+echo -n "."
+
 # inject path to init script configuration into init script
-sed -e "s|<INIT_SCRIPT_CONFIGURATION>|$INSTALLER_INIT_SCRIPT_CONFIGURATION|" -i "$INSTALLER_INIT_SCRIPT"
+sed -e "s|<INIT_SCRIPT_CONFIGURATION>|$INSTALLER_INIT_SCRIPT_CONFIGURATION|" -i "$INSTALLER_INIT_SCRIPT" && echo -n "."
 
-sed -e "s|<GRIDFTPD_SERVICE_NAME>|$INSTALLER_GRIDFTPD_SERVICE_NAME|" -i "$INSTALLER_INIT_SCRIPT"
-sed -e "s|<GRIDFTPD_OS>|$INSTALLER_GRIDFTPD_OS|" -i "$INSTALLER_INIT_SCRIPT"
+sed -e "s|<GRIDFTPD_SERVICE_NAME>|$INSTALLER_GRIDFTPD_SERVICE_NAME|" -i "$INSTALLER_INIT_SCRIPT" && echo -n "."
+sed -e "s|<GRIDFTPD_OS>|$INSTALLER_GRIDFTPD_OS|" -i "$INSTALLER_INIT_SCRIPT" && echo -n "."
 
-sed -e "s/#sed#//g" -i "$INSTALLER_INIT_SCRIPT"
+sed -e "s/#sed#//g" -i "$INSTALLER_INIT_SCRIPT" && echo -n "."
 
 echo ""
 echo "Installation finished."
