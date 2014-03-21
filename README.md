@@ -45,11 +45,16 @@ configuration needed for the GridFTP processes, if defaults are OK for you.
 
   * You can have multiple different GridFTP services on the same machine
 (e.g. internal/external GridFTP services for multi-homed hosts) if you
-provide a different name for the service.
+provide a different name ad FQDN for the service.
 
   * The number of back ends is set during installation (e.g. if you want
 six back ends, then you just need to provide the number and the first
-back end port and the installer will prepare all needed configuration files)
+back end port and the installer will prepare all needed configuration files) but
+can also be changed later in the init script configuration file. If you aren't
+happy with the number configured during installation, stop the service,
+increase or decrease the number (`GRIDFTPD_BACKENDS_NUMBER`) and restart the
+service. The init script will then start as many back ends as you have
+configured in the init script configuration.
 
   * By using a specific FQDN during installation (default is what
 `hostname --fqdn` prints out), you can determine the interface the
@@ -61,8 +66,8 @@ so that they only accept IPC connections from the specific front end on
 the same host. So the remote back ends have to accept the local front
 end, too.)
 
-  * start/stop up to one (unprivileged) GridFTP frontend process and one or
-multiple (privileged) GridFTP backend processes
+  * start/stop up to one (unprivileged) GridFTP frontend process (PI) and one or
+multiple (privileged) GridFTP backend processes (DTPs)
 
   * per process configuration files
 
@@ -89,7 +94,7 @@ configuration files executable or non-executable
   ```
 
   5. After installation you should be able to start the GridFTP service with the
-following command (assuming you named your service `gridftpd`)
+following command (assuming you used the defaults)
 
   ```shell
   # /etc/init.d/gridftpd start
@@ -103,6 +108,7 @@ following command (assuming you named your service `gridftpd`)
 (GPLv3)
 
 Copyright (C) 2013 Frank Scheiner
+Copyright (C) 2014 Frank Scheiner, HLRS, Universitaet Stuttgart
 
 The software is distributed under the terms of the GNU General Public License
 
@@ -118,3 +124,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
