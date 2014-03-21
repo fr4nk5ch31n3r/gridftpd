@@ -119,8 +119,7 @@ startDaemon()
 	return
 }
 
-# TODO:
-# Sync back to SLES init script
+
 stopDaemon()
 {
 	local pidFile="$1"
@@ -155,8 +154,7 @@ stopDaemon()
 	return
 }
 
-# TODO:
-# Sync back to SLES init script
+
 reloadDaemon()
 {
 	local binary="$1"
