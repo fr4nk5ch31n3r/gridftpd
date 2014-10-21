@@ -68,6 +68,19 @@ getRemoteNodesString()
 	return
 }
 
+
+getFrontendString()
+{
+	local fqdn="$1"
+
+	local frontendString="$fqdn"
+
+	echo "$frontendString"
+
+	return
+}
+
+
 # defaults
 #  Default settings for globus-gridftp-server. 
 
@@ -343,6 +356,11 @@ else
 		fi
 		echo ""
 
+		# print a string with the remote-nodes string, e.g.
+		# host.domain.tld:2813,host.domain.tld:2814,[...] to allow for
+		# easier clustered or distributed installation
+		echo "Please use the following string (without double quotes!) on the remote systems when asked for additional GridFTP back ends: \"$( getRemoteNodesString "$INSTALLER_GRIDFTPD_HOST_FQDN" "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" "$INSTALLER_GRIDFTPD_BACKENDS_NUMBER" )\""
+
 		# TODO:
 		# Key and cert names should use the dynamically determined FQDN!
 		echo -n "Please provide the full path to the host certificate used for the back end(s) [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostcert_${INSTALLER_GRIDFTPD_HOST_FQDN}_backend.pem]: "
@@ -361,13 +379,6 @@ else
 
 		echo -n "Please provide any additional GridFTP front end(s) the back ends should allow to connect (<FQDN>[,<FQDN>[,[...]]]): "
 		read INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS
-		if [[ "$INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS" != "" ]]; then
-			# print a string with the remote-nodes string, e.g.
-			# host.domain.tld:2813,host.domain.tld:2814,[...] to allow for
-			# easier clustered or distributed installation
-			echo ""
-			echo "Please use the following string on the remote systems when asked for additional GridFTP back ends: $( getRemoteNodesString "$INSTALLER_GRIDFTPD_HOST_FQDN" "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" "$INSTALLER_GRIDFTPD_BACKENDS_NUMBER" )"
-		fi
 		echo ""
 	fi
 	
@@ -375,7 +386,7 @@ else
 	# Front end configuration
 	########################################################################
 	if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "yes" ]]; then
-	
+
 		echo "FRONT END CONFIGURATION"
 		echo ""
 
@@ -385,41 +396,39 @@ else
 			INSTALLER_GRIDFTPD_FRONTEND_RUNASUSER="$GRIDFTPD_FRONTEND_RUNASUSER"
 		fi
 		echo ""
-	
+
 		echo -n "Please provide the full path to the front end configuration file [${INSTALLER_GRIDFTPD_CONFIG_BASE_PATH}/gridftpd_frontend.conf]: "
 		read INSTALLER_GRIDFTPD_FRONTEND_CONFIG
 		if [[ "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG" == "" ]]; then
 			INSTALLER_GRIDFTPD_FRONTEND_CONFIG="${INSTALLER_GRIDFTPD_CONFIG_BASE_PATH}/gridftpd_frontend.conf"
 		fi
 		echo ""
-	
+
 		echo -n "Please provide the TCP port the front end should listen to [$GRIDFTPD_FRONTEND_PORT]: "
 		read INSTALLER_GRIDFTPD_FRONTEND_PORT
 		if [[ "$INSTALLER_GRIDFTPD_FRONTEND_PORT" == "" ]]; then
 			INSTALLER_GRIDFTPD_FRONTEND_PORT="$GRIDFTPD_FRONTEND_PORT"
 		fi
 		echo ""
-	
+
+		echo "Please use the following string (without double quotes!) on the remote systems when asked for additional GridFTP front ends: \"$( getFrontendString "$INSTALLER_GRIDFTPD_HOST_FQDN" )\""
+
 		echo -n "Please provide the full path to the host certificate used for the front end [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostcert_${INSTALLER_GRIDFTPD_HOST_FQDN}_frontend.pem]: "
 		read INSTALLER_GRIDFTPD_FRONTEND_CERT
 		if [[ "$INSTALLER_GRIDFTPD_FRONTEND_CERT" == "" ]]; then
 			INSTALLER_GRIDFTPD_FRONTEND_CERT="${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostcert_${INSTALLER_GRIDFTPD_HOST_FQDN}_frontend.pem"
 		fi
 		echo ""
-	
+
 		echo -n "Please provide the full path to the host key used for the front end [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostkey_${INSTALLER_GRIDFTPD_HOST_FQDN}_frontend.pem]: "
 		read INSTALLER_GRIDFTPD_FRONTEND_KEY
 		if [[ "$INSTALLER_GRIDFTPD_FRONTEND_KEY" == "" ]]; then
 			INSTALLER_GRIDFTPD_FRONTEND_KEY="${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostkey_${INSTALLER_GRIDFTPD_HOST_FQDN}_frontend.pem"
 		fi
 		echo ""
-		
+
 		echo -n "Please provide any additional GridFTP back end(s) this front end should use (<FQDN>:<PORT>[,<FQDN>:<PORT>[,[...]]]): "
 		read INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS
-		if [[ "$INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS" != "" ]]; then
-			echo ""
-			echo "Please use the following string on the remote systems when asked for additional GridFTP front ends: $INSTALLER_GRIDFTPD_HOST_FQDN"
-		fi
 		echo ""
 	fi
 	echo "END OF CONFIGURATION"
