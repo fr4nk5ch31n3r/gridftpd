@@ -340,8 +340,9 @@ startGridftpd()
 				REMOTE_NODES_LIST="$REMOTE_NODES_LIST,${GRIDFTPD_HOST_FQDN}:${GRIDFTPD_BACKEND_PORT}"
 			fi
 
+			# fill list of usable PIs
 			if [[ "$GRIDFTPD_ADDITIONAL_FRONTENDS" != "" ]]; then
-				FRONTENDS_LIST="$GRIDFTPD_HOST_FQDN,$GRIDFTPD_ADDITIONAL_FRONTENDS"
+				FRONTENDS_LIST="${GRIDFTPD_HOST_FQDN},${GRIDFTPD_ADDITIONAL_FRONTENDS}"
 			else
 				FRONTENDS_LIST="$GRIDFTPD_HOST_FQDN"
 			fi
@@ -457,7 +458,16 @@ startGridftpd()
 		#echo "hostname ${GRIDFTPD_HOST_FQDN}" > "${GRIDFTPD_FRONTEND_CONFIG}.d/hostname"
 		#echo "port ${GRIDFTPD_FRONTEND_PORT}" > "${GRIDFTPD_FRONTEND_CONFIG}.d/port"
 		if [[ "$GRIDFTPD_ADDITIONAL_BACKENDS" != "" ]]; then
-			REMOTE_NODES_LIST="${REMOTE_NODES_LIST},${GRIDFTPD_ADDITIONAL_BACKENDS}"
+			if [[ "$REMOTE_NODES_LIST" != "" ]]; then
+				REMOTE_NODES_LIST="${REMOTE_NODES_LIST},${GRIDFTPD_ADDITIONAL_BACKENDS}"
+			else
+				REMOTE_NODES_LIST="${GRIDFTPD_ADDITIONAL_BACKENDS}"
+			fi
+		fi
+
+		if [[ "$REMOTE_NODES_LIST" == "" ]]; then
+			echo -e "\nERROR: No backends defined, neither local nor remote. Please check the init script configuration and add back ends.\n"
+			exit 1
 		fi
 
 		##  determine TCP port used by this frontend process
