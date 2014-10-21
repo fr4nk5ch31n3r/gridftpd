@@ -45,7 +45,7 @@ configuration needed for the GridFTP processes, if defaults are OK for you.
 
   * You can have multiple different GridFTP services on the same machine
 (e.g. internal/external GridFTP services for multi-homed hosts) if you
-provide a different name ad FQDN for the service.
+provide a different name and FQDN for the service.
 
   * The number of back ends is set during installation (e.g. if you want
 six back ends, then you just need to provide the number and the first
@@ -54,27 +54,27 @@ can also be changed later in the init script configuration file. If you aren't
 happy with the number configured during installation, stop the service,
 increase or decrease the number (`GRIDFTPD_BACKENDS_NUMBER`) and restart the
 service. The init script will then start as many back ends as you have
-configured in the init script configuration.
+configured in the init script configuration. Any back ends that don't have been
+configured during the initial installation step will use the default
+configuration. You can adapt this by creating (a) separate configuration file(s)
+for the desired back end(s).
 
   * By using a specific FQDN during installation (default is what
 `hostname --fqdn` prints out), you can determine the interface the
-GridFTP processes should bind to
+GridFTP processes should use
 
-  * You can include back ends from other hosts (but still need to
-configure those manually there. Background: The back ends are configured
-so that they only accept IPC connections from the specific front end on
-the same host. So the remote back ends have to accept the local front
-end, too.)
+  * You can include back ends or front ends from other hosts
+(`GRIDFTPD_ADDITIONAL_BACKENDS`, `GRIDFTPD_ADDITIONAL_FRONTENDS`)
 
   * start/stop up to one (unprivileged) GridFTP frontend process (PI) and one or
-multiple (privileged) GridFTP backend processes (DTPs)
+multiple (privileged) GridFTP backend processes (DTPs) locally
 
   * per process configuration files
 
   * activate a specific frontend or specific backends by making its
 configuration files executable or non-executable
 
-  * list status of all activated and running GridFTP service processes
+  * list status of all activated and running GridFTP service processes locally
 
   * reload changed configuration files on the fly
 
@@ -100,8 +100,8 @@ following command (assuming you used the defaults)
   # /etc/init.d/gridftpd start
   ```
 
-[1]: https://github.com/fr4nk5ch31n3r/gridftpd/archive/master.tar.gz
-[2]: https://github.com/fr4nk5ch31n3r/gridftpd/releases
+[1]: archive/master.tar.gz
+[2]: releases
 
 ## License ##
 
