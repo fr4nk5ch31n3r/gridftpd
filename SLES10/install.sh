@@ -360,6 +360,7 @@ else
 		# host.domain.tld:2813,host.domain.tld:2814,[...] to allow for
 		# easier clustered or distributed installation
 		echo "Please use the following string (without double quotes!) on the remote systems when asked for additional GridFTP back ends: \"$( getRemoteNodesString "$INSTALLER_GRIDFTPD_HOST_FQDN" "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" "$INSTALLER_GRIDFTPD_BACKENDS_NUMBER" )\""
+		echo ""
 
 		# TODO:
 		# Key and cert names should use the dynamically determined FQDN!
@@ -412,6 +413,7 @@ else
 		echo ""
 
 		echo "Please use the following string (without double quotes!) on the remote systems when asked for additional GridFTP front ends: \"$( getFrontendString "$INSTALLER_GRIDFTPD_HOST_FQDN" )\""
+		echo ""
 
 		echo -n "Please provide the full path to the host certificate used for the front end [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostcert_${INSTALLER_GRIDFTPD_HOST_FQDN}_frontend.pem]: "
 		read INSTALLER_GRIDFTPD_FRONTEND_CERT
@@ -431,8 +433,20 @@ else
 		read INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS
 		echo ""
 	fi
+	
 	echo "END OF CONFIGURATION"
 	echo ""
+	
+	echo "Proceed with installation [Y/n]: "
+	read
+	if [[ "$REPLY" == "" || "$REPLY" =~ [Yy] ]]; then
+
+		echo ""
+	else
+		echo ""
+		echo "Installation aborted."
+		exit 0
+	fi	
 fi
 
 ################################################################################
