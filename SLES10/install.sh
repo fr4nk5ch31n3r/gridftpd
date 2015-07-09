@@ -33,10 +33,10 @@ if [[ "$INSTALLER_GRIDFTPD_OS" == "SLES" || \
       "$INSTALLER_GRIDFTPD_OS" == "SL" ]]; then
 
 	INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME="sysconfig"
-	
+
 elif [[ "$INSTALLER_GRIDFTPD_OS" == "Debian" || \
 	"$INSTALLER_GRIDFTPD_OS" == "Ubuntu" ]]; then
-	
+
 	INSTALLER_INIT_SCRIPT_CONFIGURATION_DIR_NAME="default"
 fi
 
@@ -205,13 +205,13 @@ else
 
 	read -e -p "Configure a GridFTP front end process [Y/n]: "
 	if [[ "$REPLY" == "" || "$REPLY" =~ [Yy] ]]; then
-	
+
 		INSTALLER_CONFIGURE_FRONTEND="yes"
 	else
 		INSTALLER_CONFIGURE_FRONTEND="no"
 	fi
 	echo ""
-	
+
 	if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "no" && \
 	      "$INSTALLER_CONFIGURE_BACKEND" == "no" ]]; then
 
@@ -241,7 +241,7 @@ else
 		INSTALLER_GRIDFTPD_SERVICE_NAME="$GRIDFTPD_SERVICE_NAME"
 	fi
 	echo ""
-	
+
 	if [[ "$INSTALLER_GRIDFTPD_INSTALL_PREFIX" != "" ]]; then
 		GRIDFTPD_BIN="/sbin/globus-gridftp-server"
 	fi
@@ -250,7 +250,7 @@ else
 	if [[ "$INSTALLER_GRIDFTPD_BIN" == "" ]]; then
 		INSTALLER_GRIDFTPD_BIN="${INSTALLER_GRIDFTPD_INSTALL_PREFIX}${GRIDFTPD_BIN}"
 	fi
-	
+
 	INSTALLER_GRIDFTPD_LD_LIBRARY_PATH=$( dirname "$INSTALLER_GRIDFTPD_BIN" )/../lib
 	INSTALLER_GRIDFTPD_PIDFILES_PATH="$GRIDFTPD_PIDFILES_PATH"
 	echo ""
@@ -276,14 +276,14 @@ else
 	########################################################################
 	echo "NETWORK CONFIGURATION"
 	echo ""
-	
+
 	#echo -n "Please define the TCP port range to use for inbound connections (GLOBUS_TCP_PORT_RANGE) [$GRIDFTPD_TCP_PORT_RANGE]: "
 	read -e -p "Please define the TCP port range to use for inbound connections (GLOBUS_TCP_PORT_RANGE) [$GRIDFTPD_TCP_PORT_RANGE]: " INSTALLER_GRIDFTPD_TCP_PORT_RANGE
 	if [[ "$INSTALLER_GRIDFTPD_TCP_PORT_RANGE" == "" ]]; then
 		INSTALLER_GRIDFTPD_TCP_PORT_RANGE="$GRIDFTPD_TCP_PORT_RANGE"
 	fi
 	echo ""
-	
+
 	#echo -n "Please define the TCP port range to use for outbound connections (GLOBUS_TCP_SOURCE_RANGE) [$GRIDFTPD_TCP_SOURCE_RANGE]: "
 	read -e -p "Please define the TCP port range to use for outbound connections (GLOBUS_TCP_SOURCE_RANGE) [$GRIDFTPD_TCP_SOURCE_RANGE]: " INSTALLER_GRIDFTPD_TCP_SOURCE_RANGE
 	if [[ "$INSTALLER_GRIDFTPD_TCP_SOURCE_RANGE" == "" ]]; then
@@ -296,7 +296,7 @@ else
 	########################################################################
 	echo "GSI CONFIGURATION"
 	echo ""
-	
+
 	#echo -n "Please provide the full path to the GSI configuration base dir [${INSTALLER_GRIDFTPD_INSTALL_PREFIX}${GRIDFTPD_GSI_CONFIG_BASE_PATH}]: "
 	read -e -p "Please provide the full path to the GSI configuration base dir [${INSTALLER_GRIDFTPD_INSTALL_PREFIX}${GRIDFTPD_GSI_CONFIG_BASE_PATH}]: " INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH
 	if [[ "$INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH" == "" ]]; then
@@ -325,28 +325,28 @@ else
 
 		echo "BACK END CONFIGURATION"
 		echo ""
-	
+
 		#echo -n "Please provide the number of back end processes you intend to use [$GRIDFTPD_BACKENDS_NUMBER]: "
 		read -e -p "Please provide the number of back end processes you intend to use [$GRIDFTPD_BACKENDS_NUMBER]: " INSTALLER_GRIDFTPD_BACKENDS_NUMBER
 		if [[ "$INSTALLER_GRIDFTPD_BACKENDS_NUMBER" == "" ]]; then
 			INSTALLER_GRIDFTPD_BACKENDS_NUMBER="$GRIDFTPD_BACKENDS_NUMBER"
 		fi
 		echo ""
-	
+
 		#echo -n "Please provide the user name for the back end process(es) [$GRIDFTPD_BACKEND_RUNASUSER]: "
 		read -e -p "Please provide the user name for the back end process(es) [$GRIDFTPD_BACKEND_RUNASUSER]: " INSTALLER_GRIDFTPD_BACKEND_RUNASUSER
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_RUNASUSER" == "" ]]; then
 			INSTALLER_GRIDFTPD_BACKEND_RUNASUSER="$GRIDFTPD_BACKEND_RUNASUSER"
 		fi
 		echo ""
-	
+
 		#echo -n "Please provide the prefix (incl. full path) for the back end configuration file(s) [${INSTALLER_GRIDFTPD_CONFIG_BASE_PATH}/gridftpd_backend]: "
 		read -e -p "Please provide the prefix (incl. full path) for the back end configuration file(s) [${INSTALLER_GRIDFTPD_CONFIG_BASE_PATH}/gridftpd_backend]: " INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX" == "" ]]; then
 			INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX="${INSTALLER_GRIDFTPD_CONFIG_BASE_PATH}/gridftpd_backend"
 		fi
 		echo ""
-	
+
 		#echo -n "Please provide the TCP port the first back end should listen to (additional backends will use the subsequent TCP ports, so make sure you have enough unused ports in this range) [$GRIDFTPD_BACKEND_PORT_FIRST]: "
 		read -e -p "Please provide the TCP port the first back end should listen to (additional backends will use the subsequent TCP ports, so make sure you have enough unused ports in this range) [$GRIDFTPD_BACKEND_PORT_FIRST]: " INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_PORT_FIRST" == "" ]]; then
@@ -368,7 +368,7 @@ else
 			INSTALLER_GRIDFTPD_BACKEND_CERT="${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostcert_${INSTALLER_GRIDFTPD_HOST_FQDN}_backend.pem"
 		fi
 		echo ""
-	
+
 		#echo -n "Please provide the full path to the host key used for the back end(s) [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostkey_${INSTALLER_GRIDFTPD_HOST_FQDN}_backend.pem]: "
 		read -e -p "Please provide the full path to the host key used for the back end(s) [${INSTALLER_GRIDFTPD_GSI_CONFIG_BASE_PATH}/hostkey_${INSTALLER_GRIDFTPD_HOST_FQDN}_backend.pem]: " INSTALLER_GRIDFTPD_BACKEND_KEY
 		if [[ "$INSTALLER_GRIDFTPD_BACKEND_KEY" == "" ]]; then
@@ -380,7 +380,7 @@ else
 		read -e -p "Please provide any additional GridFTP front end(s) the back ends should allow to connect (<FQDN>[,<FQDN>[,[...]]]): " INSTALLER_GRIDFTPD_ADDITIONAL_FRONTENDS
 		echo ""
 	fi
-	
+
 	########################################################################
 	# Front end configuration
 	########################################################################
@@ -431,10 +431,10 @@ else
 		read -e -p "Please provide any additional GridFTP back end(s) this front end should use (<FQDN>:<PORT>[,<FQDN>:<PORT>[,[...]]]): " INSTALLER_GRIDFTPD_ADDITIONAL_BACKENDS
 		echo ""
 	fi
-	
+
 	echo "END OF CONFIGURATION"
 	echo ""
-	
+
 	#echo "Proceed with installation [Y/n]: "
 	read -e -p "Proceed with installation [Y/n]: "
 	if [[ "$REPLY" == "" || "$REPLY" =~ [Yy] ]]; then
@@ -444,11 +444,11 @@ else
 		echo ""
 		echo "Installation aborted."
 		exit 0
-	fi	
+	fi
 fi
 
 ################################################################################
-# actual installation      
+# actual installation
 ################################################################################
 
 echo -n "Starting installation"
@@ -460,8 +460,8 @@ fi
 
 if [[ "$INSTALLER_CONFIGURE_BACKEND" == "yes" ]]; then
 
-	for INDEX in $( seq -w 1 $INSTALLER_GRIDFTPD_BACKENDS_NUMBER ); do
-	
+	for INDEX in $( seq 1 $INSTALLER_GRIDFTPD_BACKENDS_NUMBER ); do
+
 		INSTALLER_GRIDFTPD_BACKEND_CONFIG="${INSTALLER_GRIDFTPD_BACKEND_CONFIG_PREFIX}_#${INDEX}.conf"
 		cp ./etc/gridftpd/FQDN/gridftpd_backend.conf "$INSTALLER_GRIDFTPD_BACKEND_CONFIG" && echo -n "."
 		chmod +x "$INSTALLER_GRIDFTPD_BACKEND_CONFIG" && echo -n "."
@@ -483,7 +483,7 @@ if [[ "$INSTALLER_CONFIGURE_BACKEND" == "yes" ]]; then
 fi
 
 if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "yes" ]]; then
-	
+
 	# copy default configuration
 	cp ./etc/gridftpd/FQDN/gridftpd_frontend.conf "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG" && echo -n "."
 	chmod +x "$INSTALLER_GRIDFTPD_FRONTEND_CONFIG" && echo -n "."
@@ -495,7 +495,7 @@ if [[ "$INSTALLER_CONFIGURE_FRONTEND" == "yes" ]]; then
 	# last. So configurations made there will override configurations
 	# made in the configuration dir.)
 	mkdir -p "${INSTALLER_GRIDFTPD_FRONTEND_CONFIG}.d" && echo -n "."
-	
+
 fi
 
 ################################################################################
@@ -635,4 +635,3 @@ echo ""
 echo "Installation finished."
 
 exit
-
