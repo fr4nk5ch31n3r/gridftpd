@@ -16,12 +16,17 @@ Get your Globus GridFTP server up and running in less than a minute.
 ## Prerequisites ##
 
   * Globus GridFTP server binaries installed
-  * Shipped Globus GridFTP server init scripts disabled
+    * Red Hat Enterprise Linux 6 and compatible: install `globus-gridftp-server-progs` package (either from the [EPEL repository] or from the [Globus repository])
+    * SUSE Linux Enterprise Server 10/11: install `globus-gridftp-server-progs` package (AFAIK only available from the [Globus repository])
+  * Shipped Globus GridFTP server init scripts **disabled**
 (`/etc/init.d/{globus-gridftp-server|globus-gridftp-sshftp}`)
   * host certficate and key (two copies, one for the frontend and one for the
-backend(s)) available
+backend(s), each owned by the respective users, e.g. globus for the frontend and root for the backend(s)) available
   * trusted CA certificates available
   * `grid-mapfile` configured
+
+[EPEL repository]: https://fedoraproject.org/wiki/EPEL
+[Globus repository]: http://toolkit.globus.org/toolkit/downloads/latest-stable/
 
 ## Init scripts ##
 
@@ -40,36 +45,41 @@ The following functionality is provided:
 
   * Dialogue installer (incl. defaults) - You can change any of the
 defaults (like installation dir, used certificates and keys, ports,
-FQDNs, number of back ends, etc.) or just accept them. No further
+FQDNs, number of backends, etc.) or just accept them. No further
 configuration needed for the GridFTP processes, if defaults are OK for you.
 
   * You can have multiple different GridFTP services on the same machine
 (e.g. internal/external GridFTP services for multi-homed hosts) if you
-provide a different name for the service.
+provide a different name and FQDN for the service.
 
-  * The number of back ends is set during installation (e.g. if you want
-six back ends, then you just need to provide the number and the first
-back end port and the installer will prepare all needed configuration files)
+  * The number of backends is set during installation (e.g. if you want
+six backends, then you just need to provide the number and the first
+backend port and the installer will prepare all needed configuration files) but
+can also be changed later in the init script configuration file. If you aren't
+happy with the number configured during installation, stop the service,
+increase or decrease the number (`GRIDFTPD_BACKENDS_NUMBER`) and restart the
+service. The init script will then start as many backends as you have
+configured in the init script configuration. Any backends that don't have been
+configured during the initial installation step will use the default
+configuration. You can adapt this by creating (a) separate configuration file(s)
+for the desired backend(s).
 
   * By using a specific FQDN during installation (default is what
-`hostname --fqdn` prints out), you can determine the interface the
-GridFTP processes should bind to
+`hostname --fqdn` prints out), you can determine the network interface the
+GridFTP processes should use
 
-  * You can include back ends from other hosts (but still need to
-configure those manually there. Background: The back ends are configured
-so that they only accept IPC connections from the specific front end on
-the same host. So the remote back ends have to accept the local front
-end, too.)
+  * You can include backends or frontends from other hosts
+(`GRIDFTPD_ADDITIONAL_BACKENDS`, `GRIDFTPD_ADDITIONAL_FRONTENDS`)
 
-  * start/stop up to one (unprivileged) GridFTP frontend process and one or
-multiple (privileged) GridFTP backend processes
+  * start/stop up to one (unprivileged) GridFTP frontend process (PI) and one or
+more (privileged) GridFTP backend processes (DTPs) locally
 
   * per process configuration files
 
   * activate a specific frontend or specific backends by making its
 configuration files executable or non-executable
 
-  * list status of all activated and running GridFTP service processes
+  * list status of all activated and running GridFTP service processes locally
 
   * reload changed configuration files on the fly
 
@@ -89,20 +99,21 @@ configuration files executable or non-executable
   ```
 
   5. After installation you should be able to start the GridFTP service with the
-following command (assuming you named your service `gridftpd`)
+following command (assuming you used the defaults)
 
   ```shell
   # /etc/init.d/gridftpd start
   ```
 
-[1]: https://github.com/fr4nk5ch31n3r/gridftpd/archive/master.tar.gz
-[2]: https://github.com/fr4nk5ch31n3r/gridftpd/releases
+[1]: archive/master.tar.gz
+[2]: releases
 
 ## License ##
 
 (GPLv3)
 
-Copyright (C) 2013 Frank Scheiner
+Copyright (C) 2013 Frank Scheiner  
+Copyright (C) 2014, 2015 Frank Scheiner, HLRS, Universitaet Stuttgart
 
 The software is distributed under the terms of the GNU General Public License
 
@@ -118,3 +129,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
