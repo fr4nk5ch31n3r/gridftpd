@@ -16,12 +16,17 @@ Get your Globus GridFTP server up and running in less than a minute.
 ## Prerequisites ##
 
   * Globus GridFTP server binaries installed
+    * Red Hat Enterprise Linux 6 and compatible: install `globus-gridftp-server-progs` package (either from the [EPEL repository] or from the [Globus repository])
+    * SUSE Linux Enterprise Server 10/11: install `globus-gridftp-server-progs` package (AFAIK only available from the [Globus repository])
   * Shipped Globus GridFTP server init scripts disabled
 (`/etc/init.d/{globus-gridftp-server|globus-gridftp-sshftp}`)
   * host certficate and key (two copies, one for the frontend and one for the
 backend(s)) available
   * trusted CA certificates available
   * `grid-mapfile` configured
+
+[EPEL repository]: https://fedoraproject.org/wiki/EPEL
+[Globus repository]: http://toolkit.globus.org/toolkit/downloads/latest-stable/
 
 ## Init scripts ##
 
@@ -60,14 +65,14 @@ configuration. You can adapt this by creating (a) separate configuration file(s)
 for the desired back end(s).
 
   * By using a specific FQDN during installation (default is what
-`hostname --fqdn` prints out), you can determine the interface the
+`hostname --fqdn` prints out), you can determine the network interface the
 GridFTP processes should use
 
   * You can include back ends or front ends from other hosts
 (`GRIDFTPD_ADDITIONAL_BACKENDS`, `GRIDFTPD_ADDITIONAL_FRONTENDS`)
 
   * start/stop up to one (unprivileged) GridFTP frontend process (PI) and one or
-multiple (privileged) GridFTP backend processes (DTPs) locally
+more (privileged) GridFTP backend processes (DTPs) locally
 
   * per process configuration files
 
@@ -108,7 +113,7 @@ following command (assuming you used the defaults)
 (GPLv3)
 
 Copyright (C) 2013 Frank Scheiner
-Copyright (C) 2014 Frank Scheiner, HLRS, Universitaet Stuttgart
+Copyright (C) 2014, 2015 Frank Scheiner, HLRS, Universitaet Stuttgart
 
 The software is distributed under the terms of the GNU General Public License
 
