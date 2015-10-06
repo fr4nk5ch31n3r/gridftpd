@@ -21,7 +21,7 @@ Get your Globus GridFTP server up and running in less than a minute.
   * Shipped Globus GridFTP server init scripts **disabled**
 (`/etc/init.d/{globus-gridftp-server|globus-gridftp-sshftp}`)
   * host certficate and key (two copies, one for the frontend and one for the
-backend(s), each owned by the respective users, e.g. globus for the frontend and root for the backend(s)) available
+backend(s), each owned by the respective users, e.g. `globus` for the frontend and `root` for the backend(s)) available
   * trusted CA certificates available
   * `grid-mapfile` configured
 
