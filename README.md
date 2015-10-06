@@ -18,10 +18,10 @@ Get your Globus GridFTP server up and running in less than a minute.
   * Globus GridFTP server binaries installed
     * Red Hat Enterprise Linux 6 and compatible: install `globus-gridftp-server-progs` package (either from the [EPEL repository] or from the [Globus repository])
     * SUSE Linux Enterprise Server 10/11: install `globus-gridftp-server-progs` package (AFAIK only available from the [Globus repository])
-  * Shipped Globus GridFTP server init scripts disabled
+  * Shipped Globus GridFTP server init scripts **disabled**
 (`/etc/init.d/{globus-gridftp-server|globus-gridftp-sshftp}`)
   * host certficate and key (two copies, one for the frontend and one for the
-backend(s)) available
+backend(s), each owned by the respective users, e.g. globus for the frontend and root for the backend(s)) available
   * trusted CA certificates available
   * `grid-mapfile` configured
 
@@ -45,30 +45,30 @@ The following functionality is provided:
 
   * Dialogue installer (incl. defaults) - You can change any of the
 defaults (like installation dir, used certificates and keys, ports,
-FQDNs, number of back ends, etc.) or just accept them. No further
+FQDNs, number of backends, etc.) or just accept them. No further
 configuration needed for the GridFTP processes, if defaults are OK for you.
 
   * You can have multiple different GridFTP services on the same machine
 (e.g. internal/external GridFTP services for multi-homed hosts) if you
 provide a different name and FQDN for the service.
 
-  * The number of back ends is set during installation (e.g. if you want
-six back ends, then you just need to provide the number and the first
-back end port and the installer will prepare all needed configuration files) but
+  * The number of backends is set during installation (e.g. if you want
+six backends, then you just need to provide the number and the first
+backend port and the installer will prepare all needed configuration files) but
 can also be changed later in the init script configuration file. If you aren't
 happy with the number configured during installation, stop the service,
 increase or decrease the number (`GRIDFTPD_BACKENDS_NUMBER`) and restart the
-service. The init script will then start as many back ends as you have
-configured in the init script configuration. Any back ends that don't have been
+service. The init script will then start as many backends as you have
+configured in the init script configuration. Any backends that don't have been
 configured during the initial installation step will use the default
 configuration. You can adapt this by creating (a) separate configuration file(s)
-for the desired back end(s).
+for the desired backend(s).
 
   * By using a specific FQDN during installation (default is what
 `hostname --fqdn` prints out), you can determine the network interface the
 GridFTP processes should use
 
-  * You can include back ends or front ends from other hosts
+  * You can include backends or frontends from other hosts
 (`GRIDFTPD_ADDITIONAL_BACKENDS`, `GRIDFTPD_ADDITIONAL_FRONTENDS`)
 
   * start/stop up to one (unprivileged) GridFTP frontend process (PI) and one or
@@ -112,7 +112,7 @@ following command (assuming you used the defaults)
 
 (GPLv3)
 
-Copyright (C) 2013 Frank Scheiner
+Copyright (C) 2013 Frank Scheiner  
 Copyright (C) 2014, 2015 Frank Scheiner, HLRS, Universitaet Stuttgart
 
 The software is distributed under the terms of the GNU General Public License
